@@ -128,6 +128,7 @@
       frag.appendChild(wEl);
     });
     wordsEl.innerHTML = "";
+    wordsEl.classList.toggle("quote", state.mode === "quote");
     wordsEl.appendChild(frag);
   }
 
@@ -194,6 +195,8 @@
   // Keep active line vertically centered by translating the words container.
   let lineOffset = 0;
   function scrollLines(wEl, wrapRect) {
+    // Quote mode shows the full verse with no clipping — no scrolling needed.
+    if (state.mode === "quote") return;
     const wordTop = wEl.offsetTop;
     const lineHeight = parseFloat(getComputedStyle(wordsEl).lineHeight);
     const currentLine = Math.round(wordTop / lineHeight);

@@ -163,7 +163,7 @@ body {
   font-weight: 500;
   color: var(--main);
   letter-spacing: .02em;
-  margin-bottom: -1rem;
+  margin-bottom: .5rem;
 }
 .quote-source[hidden] { display: none; }
 
@@ -183,6 +183,11 @@ body {
   max-height: calc(var(--type-size) * 1.6 * 3);
   overflow: hidden;
   transition: filter .15s;
+}
+/* In quote mode the full verse must be visible — lift the 3-line clip */
+.words.quote {
+  max-height: none;
+  overflow: visible;
 }
 .words.blurred { filter: blur(5px); }
 
