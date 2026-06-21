@@ -39,6 +39,8 @@
     incorrectChars: 0,
     extraChars: 0,
     missedChars: 0,
+    correctSpaces: 0,    // spaces after correctly-typed words (count toward net WPM)
+    typedSpaces: 0,      // every space pressed (counts toward raw WPM)
     quoteSource: "",
     focused: true,
   };
@@ -249,9 +251,9 @@
   function sampleStats() {
     const elapsed = (performance.now() - state.startTime) / 1000;
     if (elapsed < 0.1) return;
-    const correct = countCorrectChars();
+    const correct = countCorrectChars() + state.correctSpaces;
     const wpm = (correct / 5) / (elapsed / 60);
-    const raw = (state.keystrokes / 5) / (elapsed / 60);
+    const raw = ((state.keystrokes + state.typedSpaces) / 5) / (elapsed / 60);
     state.history.push({
       t: Math.round(elapsed),
       wpm: Math.round(wpm),
@@ -290,7 +292,7 @@
     if (state.mode !== "time" &&
         state.wordIndex === state.targetWords.length - 1 &&
         state.inputBuf === target) {
-      handleSpace();
+      handleSpace(true); // synthetic: no trailing space typed after final word
       return;
     }
 
@@ -318,7 +320,9 @@
     });
   }
 
-  function handleSpace() {
+  // synthetic = true when called by the last-word auto-finish (no real space
+  // was pressed), so the inter-word space is not counted in that case.
+  function handleSpace(synthetic) {
     if (!state.started || state.finished) return;
     if (state.inputBuf.length === 0) return; // ignore leading spaces
 
@@ -332,6 +336,14 @@
       else if (i >= target.length) { state.extraChars++; }
       else if (buf[i] === target[i]) { state.correctChars++; }
       else { state.incorrectChars++; }
+    }
+
+    // Count the inter-word space as a character, matching MonkeyType/TypeRacer/
+    // Key Hero: every pressed space adds to raw, and a space after a correctly
+    // typed word adds to net WPM. Accuracy and the char breakdown are unchanged.
+    if (!synthetic) {
+      state.typedSpaces++;
+      if (buf === target) state.correctSpaces++;
     }
 
     // mark word error if not perfect
@@ -367,6 +379,9 @@
         if (prevEl && prevEl.classList.contains("error")) {
           // restore tally for that word (reverse it)
           reverseWordTally(prev);
+          // un-type the space that had committed this errored word (it was an
+          // error, so it never counted toward correctSpaces — only typedSpaces)
+          if (state.typedSpaces > 0) state.typedSpaces--;
           state.wordIndex = prev;
           state.inputBuf = state.typed[prev] || "";
           state.typed[prev] = undefined;
@@ -431,9 +446,12 @@
     const elapsed = (performance.now() - state.startTime) / 1000;
     sampleStats();
 
-    const correct = state.correctChars;
+    // Include inter-word spaces in the character counts so WPM lines up with
+    // MonkeyType / TypeRacer / Key Hero (a "word" is 5 chars incl. spaces).
+    const correct = state.correctChars + state.correctSpaces;
+    const rawChars = state.keystrokes + state.typedSpaces;
     const wpm = Math.round((correct / 5) / (elapsed / 60));
-    const raw = Math.round((state.keystrokes / 5) / (elapsed / 60));
+    const raw = Math.round((rawChars / 5) / (elapsed / 60));
 
     // Accuracy is keystroke-based: every wrong key counts, even if later
     // corrected (matches MonkeyType). The character breakdown below reflects
@@ -649,6 +667,7 @@
       typed: [], wordIndex: 0, inputBuf: "", started: false, finished: false,
       startTime: 0, remaining: 0, history: [], keystrokes: 0, errorKeystrokes: 0,
       correctChars: 0, incorrectChars: 0, extraChars: 0, missedChars: 0,
+      correctSpaces: 0, typedSpaces: 0,
     });
     lineOffset = 0;
     wordsEl.style.transform = "translateY(0)";
